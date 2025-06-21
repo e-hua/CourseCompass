@@ -1,4 +1,4 @@
-import { applyEdgeChanges, applyNodeChanges } from "@xyflow/react";
+import { applyEdgeChanges, applyNodeChanges, ReactFlowProvider } from "@xyflow/react";
 import Layout from "@/components/Sidebar/layout";
 import "@xyflow/react/dist/style.css";
 import { useState, useCallback, useEffect } from "react";
@@ -10,6 +10,7 @@ import extractEdgesFromPrereqTree from "@/lib/Plan/ExtractEdgesFromPrereqTree";
 import { useUserProfile } from "@/components/my-hooks/UserProfileContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CourseNode from "@/components/diy-ui/CourseNode";
+import LabeledGroupNode from "@/components/diy-ui/LabelGroupNode";
 
 export default function AcademicPlanPage() {
   const { data: courses, isLoading, error } = useTakenCourses();
@@ -30,7 +31,20 @@ export default function AcademicPlanPage() {
 
   const nodeTypes = {
     CourseNode: CourseNode,
+    LabeledGroupNode: LabeledGroupNode,
   }
+
+  const semesterGroupNodes: Node[] = [
+      ...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({
+        id: `${i}`,
+        position: { x: 0, y: (i-1) * 200 },
+        data: { label: <div>{"Y"+Math.floor((i + 1) / 2)+"S"+(i % 2 === 0 ? 2 : 1)}</div> },
+        width: 2400,
+        height: 200,
+        type: "LabeledGroupNode",
+        draggable: false,
+      })),
+    ]
 
   useEffect(() => {
     if (!courses) return;
@@ -45,12 +59,13 @@ export default function AcademicPlanPage() {
       return {
         id: course.courseCode,
         position: {// position is relative to the parent node
-          x: 100 + count * 400,
+          x: 100 + count * 300,
           y: 100, 
         },
         data: {
           label: course.courseCode,
-          info: course.units + course.letterGrade,
+          units: course.units, 
+          grade: course.letterGrade,
         },
         type: "CourseNode",
         draggable: true,
@@ -61,7 +76,7 @@ export default function AcademicPlanPage() {
       };
     });
 
-    setNodes(computedNodes);
+    setNodes([...semesterGroupNodes, ...computedNodes]);
 
     Promise.all(
       courses.map(async (course) => {
@@ -90,6 +105,7 @@ export default function AcademicPlanPage() {
       })
     );
   }, [courses]);
+  //semesterGroupNodes is a constant array.
 
   const { userProfile } = useUserProfile();
   if (!userProfile) {
@@ -127,14 +143,18 @@ export default function AcademicPlanPage() {
 
   return (
     <Layout>
-      <div className="flex-1 overflow-hidden p-8">
+      <div className="flex-1 overflow-hidden p-4">
+        <ReactFlowProvider>
         <PlanCard
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           courseNodeTypes={nodeTypes}
+          setNodes={setNodes}
+          setEdges={setEdges}
         />
+        </ReactFlowProvider>
       </div>
     </Layout>
   );
